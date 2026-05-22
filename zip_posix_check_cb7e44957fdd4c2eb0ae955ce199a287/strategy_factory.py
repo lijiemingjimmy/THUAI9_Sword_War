@@ -156,14 +156,9 @@ class StrategyFactory:
         score = 0.0
         if target is not None:
             distance = StrategyFactory.calculate_distance(point, target.position)
+            score += max(0, 18 - distance) * 1.8
             if distance <= current.attack_range:
-                score += 60.0
-                if getattr(current, "weapon_type", 0) == 3:
-                    score += distance * 2.0
-                else:
-                    score += max(0, 8 - distance) * 2.0
-            else:
-                score += max(0, current.attack_range + current.movement - distance) * 2.0
+                score += 35.0
             if StrategyFactory._attack_damage(current, target) >= target.health and distance <= current.attack_range:
                 score += 80.0
         score += env.board.get_height(point) * 2.0
@@ -263,35 +258,31 @@ class StrategyFactory:
             board = init_message.board
             pid = init_message.id
             mid_x = board.width // 2
-            back_rank = max(1, min(3, board.boarder - 6))
-            back_file_offsets = [-5, 5, 0]
+            offsets = [0, -3, 3, -5, 5, -1, 1, -7, 7]
             if pid == 1:
                 order = [
-                    (mid_x - 5, back_rank),
-                    (mid_x + 5, back_rank),
-                    (mid_x, max(0, back_rank - 1)),
+                    (mid_x + dx, board.boarder - 1 - min(i, 2))
+                    for i, dx in enumerate(offsets)
                 ] + [
                     (x, y)
-                    for y in range(back_rank, board.boarder)
-                    for x in sorted(range(1, board.width - 1), key=lambda v: min(abs(v - (mid_x + dx)) for dx in back_file_offsets))
+                    for y in range(board.boarder - 1, max(-1, board.boarder - 6), -1)
+                    for x in sorted(range(1, board.width - 1), key=lambda v: abs(v - mid_x))
                 ]
             else:
-                back_rank = min(board.height - 2, max(board.boarder + 1, board.height - 4))
                 order = [
-                    (mid_x - 5, back_rank),
-                    (mid_x + 5, back_rank),
-                    (mid_x, min(board.height - 1, back_rank + 1)),
+                    (mid_x + dx, board.boarder + 1 + min(i, 2))
+                    for i, dx in enumerate(offsets)
                 ] + [
                     (x, y)
-                    for y in range(back_rank, board.boarder, -1)
-                    for x in sorted(range(1, board.width - 1), key=lambda v: min(abs(v - (mid_x + dx)) for dx in back_file_offsets))
+                    for y in range(board.boarder + 1, min(board.height, board.boarder + 6))
+                    for x in sorted(range(1, board.width - 1), key=lambda v: abs(v - mid_x))
                 ]
             positions = _allocate_init_positions(board, pid, init_message.piece_cnt, order)
 
             builds = [
-                (29, 1, 0, Point(3, 3)),
-                (29, 1, 0, Point(3, 3)),
-                (29, 1, 0, Point(3, 3)),
+                (22, 4, 4, Point(1, 3)),
+                (22, 4, 4, Point(2, 3)),
+                (20, 6, 4, Point(3, 3)),
             ]
             piece_args: List[PieceArg] = []
             for i in range(init_message.piece_cnt):
@@ -343,10 +334,6 @@ class StrategyFactory:
             if spell_kill is not None:
                 return spell_kill
 
-            if attackable:
-                target = max(attackable, key=lambda p: StrategyFactory._target_score(env, current, p))
-                return StrategyFactory._build_attack(current, target)
-
             focus = StrategyFactory._best_target(env, current)
             legal_moves = get_legal_moves(env)
 
@@ -362,18 +349,12 @@ class StrategyFactory:
                     action.move_target = best_escape
                     return action
 
+            if attackable:
+                target = max(attackable, key=lambda p: StrategyFactory._target_score(env, current, p))
+                return StrategyFactory._build_attack(current, target)
+
             best_move = None
             if legal_moves:
-                if current.max_action_points >= 2:
-                    attack_moves = [
-                        point for point in legal_moves
-                        if any(
-                            StrategyFactory.calculate_distance(point, enemy.position) <= current.attack_range
-                            for enemy in enemies
-                        )
-                    ]
-                    if attack_moves:
-                        legal_moves = attack_moves
                 limited_moves = sorted(
                     legal_moves,
                     key=lambda p: StrategyFactory._move_score(env, current, p, focus),
