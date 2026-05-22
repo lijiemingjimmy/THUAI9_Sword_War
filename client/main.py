@@ -36,9 +36,9 @@ def parse_args():
     parser = argparse.ArgumentParser(description="THUAI9 Saiblo Client")
     parser.add_argument(
         "--strategy",
-        choices=["aggressive", "defensive", "mcts"],
-        default="aggressive",
-        help="AI策略 (默认: aggressive)",
+        choices=["custom", "aggressive", "defensive", "mcts"],
+        default="custom",
+        help="AI策略 (默认: custom)",
     )
     parser.add_argument(
         "--mcts-simulations", type=int, default=25, help="MCTS模拟次数 (默认: 25)"
@@ -55,7 +55,10 @@ def parse_args():
 def run():
     args = parse_args()
 
-    if args.strategy == "aggressive":
+    if args.strategy == "custom":
+        action_strategy = StrategyFactory.get_custom_action_strategy()
+        init_strategy = StrategyFactory.get_custom_init_strategy()
+    elif args.strategy == "aggressive":
         action_strategy = StrategyFactory.get_aggressive_action_strategy()
         init_strategy = StrategyFactory.get_aggressive_init_strategy()
     elif args.strategy == "defensive":

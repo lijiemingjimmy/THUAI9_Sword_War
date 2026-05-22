@@ -32,8 +32,8 @@ def parse_args():
     parser.add_argument(
         "--strategy",
         type=str,
-        choices=["aggressive", "defensive", "mcts"],
-        default="aggressive",
+        choices=["custom", "aggressive", "defensive", "mcts"],
+        default="custom",
         help="function 模式下的布阵与行动策略",
     )
     parser.add_argument(
@@ -46,6 +46,11 @@ def parse_args():
 
 
 def _strategies_for(args):
+    if args.strategy == "custom":
+        return (
+            StrategyFactory.get_custom_init_strategy(),
+            StrategyFactory.get_custom_action_strategy(),
+        )
     if args.strategy == "aggressive":
         return (
             StrategyFactory.get_aggressive_init_strategy(),
